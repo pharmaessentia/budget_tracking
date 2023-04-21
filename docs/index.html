@@ -13,7 +13,7 @@
     <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
 
-    <link rel="stylesheet" href="main.css" />
+    <link rel="stylesheet" href="css/main.css" />
     <link href="https://fonts.googleapis.com/css?family=Darker+Grotesque&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css?family=Heebo:700&display=swap" rel="stylesheet">
     <script
@@ -29,15 +29,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- <link rel="shortcut icon" href="http://www.tlin.org/jpg/mountain_favicon.jpg"> -->
 
+    <!-- Google API -->
+    <script src="https://apis.google.com/js/api.js"></script>
+
+    <!-- d3 -->
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+
+    <!-- crossfilter -->
+    <script src="js/crossfilter.min.js"></script>
+
+    <!-- dc.js -->
     <script src="https://unpkg.com/dc@4/dist/dc.js"></script>
-    <script src="https://unpkg.com/dc@4/dist/style/dc.css"></script>
+    <link rel="stylesheet" href="https://unpkg.com/dc@4/dist/style/dc.css" />
       
   </head>
 
   <body>
     <div class="container">
-      <div id="login-box">
-        <div class="row justify-content-md-center pt-6 pb-3">
+
+      <div id="login-box"> <!-- login box -->
+        <div class="row justify-content-md-center pb-5">
           <div class="col-3">
             <a href="https://www.pharmaessentia.com" target="_blank" class="mx-auto"><img src="img/315963242logo-pharma-essentia-v2-01.jpg" class="img-fluid" alt="PEC Logo"></a>
           </div>
@@ -62,7 +73,7 @@
             </div>
           </div>
         </div>
-        <div class="row justify-content-md-center pb-3">
+        <div class="row justify-content-md-center">
           <div class="col-3">
             <button type="button" class="btn btn-primary" id="login-button">Login</button>
           </div>
@@ -74,8 +85,18 @@
         </div>
       </div> <!-- end login box -->
 
+      <div id="chart-div">
+        <a class='reset' href='javascript:myChart.filterAll();dc.redrawAll();' style='visibility: hidden;'>reset</a>
+        <span class='reset' style='visibility: hidden;'>
+          Current filter: <span class='filter'></span>
+        </span>
+      </div>
+      <div id="chart-title"></div>
+
       <!-- Main -->
       <script src="js/main.js"></script>
+      <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+      <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
     </div>
 
   </body>
