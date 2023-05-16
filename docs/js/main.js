@@ -4,26 +4,28 @@ var tries = 0;
 var a;
 var b;
 
-var overallData = [];
-var translationalData = [];
-var dataScienceData = [];
-var rdMgmtData = [];
-var generalAdminData = [];
-var expensesData = [];
+var categoriesDict = {		
+	'General and administrative': 'G&A',
+	'Information technology': 'G&A',
+	'Facility': 'G&A',
+	'Legal Corporate and IP': 'G&A',
+		
+	
+	'R&D Management': 'R&D',
+	'Biologics': 'R&D',
+	'Immunology': 'R&D',
+	'Translational Science': 'R&D',
+	'Data Science': 'R&D',
+  'Pre-IND studies': 'R&D',
+			
+	'Building Improvement': 'CAPEX',
+	'Lab Equipment': 'CAPEX',
+	'Office Equipment': 'CAPEX',
+	'Computer Equipment': 'CAPEX'}
 
-var overallDict = {};
-var translationalDict = {};
-var dataScienceDict = {};
-var rdMgmtDict = {};
-var generalAdminDict = {};
-var expensesDict = {};
-
-const CLIENT_ID = '748933621985-hp6mlbfi9kgtt60nav8nh4lufhlhear1.apps.googleusercontent.com';
-const API_KEY = 'AIzaSyAPREfLoSbpyVWzcUGbvtLuPUQH02ZnWJk';
-
-const DISCOVERY_DOC = 'https://sheets.googleapis.com/$discovery/rest?version=v4';
-
-const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly';
+var categoriesChart = new dc.RowChart("#categories-chart");
+var monthsChart = new dc.LineChart("#months-chart");
+var yearsChart = new dc.PieChart("#years-chart");
 
 $('#login-button').click(function() {
   tries += 1;
@@ -42,92 +44,126 @@ $('#login-button').click(function() {
   }
 });
 
-let tokenClient;
-let gapiInited = false;
-let gisInited = false;
-
-/**
- * Callback after api.js is loaded.
- */
-function gapiLoaded() {
-  gapi.load('client', initializeGapiClient);
+function numberWithCommas(x) {
+  return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
-/**
- * Callback after the API client is loaded. Loads the
- * discovery doc to initialize the API.
- */
-function initializeGapiClient() {
-  gapi.client.init({
-    apiKey: API_KEY,
-    discoveryDocs: [DISCOVERY_DOC],
-  }).then(function() {
+function createCharts() {
+  // var q1Chart = new dc.PieChart("#q1Chart");
+  // var q2Chart = new dc.PieChart("#q2Chart");
+  // var q3Chart = new dc.PieChart("#q3Chart");
+  // var q4Chart = new dc.PieChart("#q4Chart");
+  
+  // var barChart = new dc.BarChart("#barChart");
+  // var rowChart = new dc.RowChart("#rowChart");
+  
+  // d3.json('json/budget.json').then(data => {
+    const dateFormatSpecifier = '%m/%d/%Y';
+    const dateFormat = d3.timeFormat(dateFormatSpecifier);
+    const dateFormatParser = d3.timeParse(dateFormatSpecifier);
+  
+    const ndx = crossfilter(overallData);
+    const all = ndx.groupAll();
+  
+    var categoriesList = [];
+  
+    overallData.forEach(d => {
 
-    getCreds('1N57uC28-1rR8z9QSg11tIQdARCXGeqjS8ii4JEaShGI');
-    getDataSheet('1N57uC28-1rR8z9QSg11tIQdARCXGeqjS8ii4JEaShGI', 'Overall!A1:G', overallData);
-    getDataSheet('1N57uC28-1rR8z9QSg11tIQdARCXGeqjS8ii4JEaShGI', 'Translational Science!A1:P', translationalData);
-    getDataSheet('1N57uC28-1rR8z9QSg11tIQdARCXGeqjS8ii4JEaShGI', 'Data Science!A1:P', dataScienceData);
-    getDataSheet('1N57uC28-1rR8z9QSg11tIQdARCXGeqjS8ii4JEaShGI', 'R&D Management!A1:P', rdMgmtData);
-    getDataSheet('1N57uC28-1rR8z9QSg11tIQdARCXGeqjS8ii4JEaShGI', 'Expenses!A1:I', expensesData);
-  });
-  gapiInited = true;
+      d.dd = dateFormatParser(d["date"]);
+      d.month = d3.timeMonth(d.dd);
+      d.year = d3.timeYear(d.dd);
+      d.amount = Number(d["amount"].replaceAll(',', ''));
+      d.category = d["category"];
+      categoriesList.push(d.category);
+    });
+
+    function createCumulativeGroup(source_group) {
+	    return {
+        all:function () {
+          var cumulate = {};
+          return source_group.all().map(function(d) {
+            console.log(d.key[0]);
+            if(cumulate[d.key[0]]) {
+              cumulate[d.key[0]] += d.value;
+            } else {
+              cumulate[d.key[0]] = d.value;
+            }
+            //console.log(d.key+" " +cumulate);
+            return {key:d.key, value:cumulate[d.key[0]]};
+          });
+        }
+	    };
+	  }
+  
+    var categoryDimension = ndx.dimension(function(d) {return d.category;});
+    var categoryGroup = categoryDimension.group().reduceSum(function(d) {return d.amount;});
+  
+    const monthDimension = ndx.dimension(d => d.month);
+    const monthGroup = monthDimension.group().reduceSum(function(d) {return d.amount;});
+  
+    const yearDimension = ndx.dimension(d => d.year);
+    const yearGroup = yearDimension.group().reduceSum(d => d.amount);
+
+    var colorsList = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928', '#ccc'];
+  
+    categoriesChart
+      .width(800)
+      .height(400)
+      .dimension(categoryDimension)
+      .group(categoryGroup)
+      .margins({top: 0, right: 0, bottom: 100, left: 100})
+      .elasticX(true)
+      .title(function (p) {
+        return p.key + ': $' + numberWithCommas(p.value)
+      })
+      .colorAccessor(d => d.key)
+      .ordinalColors(colorsList);
+  
+    yearsChart /* dc.pieChart('#quarter-chart', 'chartGroup') */
+      .width(180)
+      .height(180)
+      .radius(80)
+      .innerRadius(30)
+      .dimension(yearDimension)
+      .group(yearGroup);
+
+    monthsChart /* dc.lineChart('#monthly-move-chart', 'chartGroup') */
+      .width(990)
+      .height(200)
+      .transitionDuration(1000)
+      .margins({top: 30, right: 50, bottom: 30, left: 100})
+      .dimension(monthDimension)
+      .mouseZoomable(true)
+  // Specify a "range chart" to link its brush extent with the zoom of the current "focus chart".
+      // .rangeChart(volumeChart)
+      .x(d3.scaleTime().domain([new Date(2022, 11, 31), new Date(2024, 11, 31)]))
+      .round(d3.timeMonth.round)
+      .xUnits(d3.timeMonths)
+      .elasticY(true)
+      .renderHorizontalGridLines(true)
+  //##### Legend
+  
+      // Position the legend relative to the chart origin and specify items' height and separation.
+      .legend(new dc.Legend().x(800).y(10).itemHeight(13).gap(5))
+      .brushOn(false)
+      // Add the base layer of the stack with group. The second parameter specifies a series name for use in the
+      // legend.
+      // The `.valueAccessor` will be used for the base layer
+      .group(createCumulativeGroup(monthGroup), 'Total')
+      .valueAccessor(d => d.value)
+      // Stack additional layers with `.stack`. The first paramenter is a new group.
+      // The second parameter is the series name. The third is a value accessor.
+      // Title can be called by any stack layer.
+      .title(d => {
+          let value = d.value ? d.value : d.value;
+          if (isNaN(value)) {
+              value = 0;
+          }
+          return `${d.key}\n${value}`;
+      });
+  
+    dc.renderAll();
+  // });
 }
 
-/**
- * Callback after Google Identity Services are loaded.
- */
-function gisLoaded() {
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
-    callback: '', // defined later
-  });
-  gisInited = true;
-}
 
-function getCreds(in_sheet) {
-  gapi.client.sheets.spreadsheets.values.get({
-    spreadsheetId: in_sheet,
-    range: 'c!A1:B',
-  }).then(function(response) {
-    var values = response.result.values;
-
-    a = values[0][0];
-    b = values[0][1];
-
-  });
-}
-
-function getDataSheet(in_sheet, in_sheet_name, in_data_array) {
-  gapi.client.sheets.spreadsheets.values.get({
-    spreadsheetId: in_sheet,
-    range: in_sheet_name,
-  }).then(function(response) {
-    var values = response.result.values;
-
-    for (var i = 1; i < values.length; i++){
-      var currentRow = [];
-      for (var j = 0; j < values[i].length; j++) {
-        currentRow.push(values[i][j]);
-      }
-      in_data_array.push(currentRow);
-    }
-  })
-}
-
-function jsonifyArray(in_array, in_json_dict) {
-  for (var i; i < in_array.length; i++) {
-    if (in_array[i][0] == '' && in_array[i][2] == '') {
-      // in_json_dict[in_array[i][1]] = [Number(in_array[i][3]), Number(in_array[i][4]), Number(in_array[i][5]), Number(in_array[i][6])]
-      in_json_dict[in_array[i][1]] = i;
-    }
-  }
-}
-
-jsonifyArray(overallData, overallDict);
-
-const breakdownChart = new dc.PieChart('#breakdownChartId');
-
-// d3.json(overallData).then(data => {
-
-// });
